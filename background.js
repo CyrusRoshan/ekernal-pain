@@ -1,34 +1,92 @@
+var messageSelector = '#u_0_0 > div > div > div._1q5- > div._20bp > div._4_j4 > div._mh6 > div > div._4rv3 > div > div > div > div._5rp7._5rp8 > div > div > div > div > div > span > span';
 
-chrome.webRequest.onBeforeRequest.addListener(
-  function(request) {
-    if(request.method == "POST") {
-      var requestBody = decodeBody(request.requestBody.raw[0].bytes);
-      requestBody = replaceParameterValue(requestBody, "body", function(full, key, value){
-        return key + "GOSU";
-      });
-      request.requestBody = encodeBody(requestBody);
+var spaceTypes = {
+  'default': '&#x0020;',
+  'noWidth': '&#x180E;',
+  'hair': '&#x200A;',
+  'punctuation': '&#x2008;',
+}
+
+var kernStyles = {
+  'default': [
+    { 'spaceType': 'hair',
+      'probability': 3/10,
+      'multiple':  1,
+    },
+    { 'spaceType': 'punctuation',
+      'probability': 3/10,
+      'multiple': 1,
+    },
+    { 'spaceType': 'default',
+      'probability': 2/10,
+      'multiple': 1,
+    },
+    { 'spaceType': 'default',
+      'probability': 1/10,
+      'multiple': 2,
+    },
+  ],
+  'mobileHate': [
+    { 'spaceType': 'hair',
+      'probability': 4/10,
+      'multiple': 1,
+    },
+    { 'spaceType': 'hair',
+      'probability': 3/10,
+      'multiple': 2,
+    },
+    { 'spaceType': 'hair',
+      'probability': 2/10,
+      'multiple': 4,
+    },
+    { 'spaceType': 'hair',
+      'probability': 1/15,
+      'multiple': 6,
+    },
+  ],
+}
+
+function properKerning(text, kernStyle) {
+  var textObj = stringToObject(text);
+  var kernOptions = kernStyle ? kernStyles[kernStyle] :  pickRandom(kernStyles);
+
+  for (letter in textObj) {
+    for (var i = 0; i < kernOptions.length; i++) {
+      var kernOption = kernOptions[i];
+      if (Math.random() < kernOption.probability) {
+        textObj[letter] += spaceTypes[kernOption.spaceType].repeat(kernOption.multiple);
+      }
     }
-    return {
-      requestBody: request.requestBody
-    };
-  },
-  { urls: ["https://www.messenger.com/messaging/send/*"] },
-  [ "blocking", "requestBody" ]
-);
-
-function replaceParameterValue(queryString, parameter, replaceFunc) {
-  return queryString.replace(RegExp('([?&]' + parameter + '=)([^&]*)'), replaceFunc);
-}
-
-function decodeBody(buf) {
-  return String.fromCharCode.apply(null, new Uint8Array(buf));
-}
-
-function encodeBody(str) {
-  var buf = new ArrayBuffer(str.length*2); // 2 bytes for each char
-  var bufView = new Uint8Array(buf);
-  for (var i=0, strLen=str.length; i<strLen; i++) {
-    bufView[i] = str.charCodeAt(i);
   }
-  return buf;
+
+  return objectToString(textObj);
+}
+
+function stringToObject(text) {
+  var obj = {};
+  for (var i = 0; i < text.length; i++) {
+    obj[i] = text[i];
+  }
+  return obj;
+}
+
+function objectToString(obj) {
+  var text = "";
+  for (key in obj) {
+    text += obj[key];
+  }
+  return text;
+}
+
+function pickRandom(selection) {
+  if (typeof selection != 'object') {
+    return null;
+  }
+
+  if (selection.length) {
+    var random
+    return selection[Math.trunc(Math.random() * selection.length)];
+  }
+
+  return selection[pickRandom(Object.keys(selection))];
 }
