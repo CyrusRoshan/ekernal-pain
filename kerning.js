@@ -50,23 +50,6 @@ var kernStyles = {
   ],
 }
 
-var shouldKern = true;
-
-
-function initialKern() {
-  document.querySelector('[aria-label="Type a message..."]').addEventListener('keydown', domKern, false);
-}
-initialKern();
-
-function domKern(e) {
-  if (shouldKern && e.keyCode === 13 && !e.shiftKey) {
-    var rawTextInput = document.querySelector(messageSelector);
-    if (rawTextInput) {
-      rawTextInput.innerHTML = properKerning(rawTextInput.innerText);
-    }
-  }
-}
-
 function properKerning(text, kernStyle) {
   var textObj = stringToObject(text);
   var kernOptions = kernStyle ? kernStyles[kernStyle] :  pickRandom(kernStyles);

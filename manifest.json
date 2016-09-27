@@ -15,7 +15,7 @@
   },
 
   "background": {
-    "scripts": ["background.js"],
+    "scripts": ["kerning.js", "requestProxy.js"],
     "persistent": true
   }
 }
