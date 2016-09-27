@@ -1,0 +1,21 @@
+{
+  "manifest_version": 2,
+  "name": "Ekernal Pain",
+  "description": "Kern your friends into enemies with (im)properly kerned facebook messages",
+  "version": "0.0.1",
+
+  "permissions": [
+    "webRequest",
+    "webRequestBlocking",
+    "https://www.messenger.com/"
+  ],
+
+  "browser_action": {
+
+  },
+
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": true
+  }
+}
