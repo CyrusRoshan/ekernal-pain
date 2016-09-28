@@ -1,4 +1,11 @@
 var requestQueue = {};
+var protectedHeaders = {
+    'Origin': true,
+    'User-Agent': true,
+    'Referer': true,
+    'Accept-Encoding': true,
+    'Cookie': true
+}
 
 chrome.webRequest.onBeforeRequest.addListener(
     function(request) {
@@ -22,9 +29,30 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
         }
 
         for (var i = 0; i < request.requestHeaders.length; i++) {
+            if (request.requestHeaders[i].name === 'X-DevTools-Emulate-Network-Conditions-Client-Id') {
+                request.requestHeaders.splice(i, 1);
+                continue;
+            }
+
             if (request.requestHeaders[i].name === ekernalHeader.name) {
                 request.requestHeaders.splice(i, 1);
+                console.log(request.requestHeaders[i].name);
+                console.log(ekernalHeader);
                 console.log('PROXIED', JSON.stringify(request.requestHeaders));
+
+                request.requestHeaders.forEach((header) => {
+                    if (protectedHeaders[header.name] !== undefined) {
+                        header.value = protectedHeaders[header.name];
+                    }
+                });
+
+                request.requestHeaders.push({
+                    name: 'Referer',
+                    value: protectedHeaders['Referer']
+                });
+
+                console.log('PROXYFIXED', JSON.stringify(request.requestHeaders));
+
                 return {cancel: false};
             }
         }
@@ -71,7 +99,8 @@ function makeRequest(type, path, headers, body) {
     request.open(type, path, true);
 
     for (var i = 0; i < headers.length; i++) {
-        if (['Origin', 'User-Agent', 'Referer', 'Accept-Encoding', 'Cookie'].includes(headers[i].name)) {
+        if (protectedHeaders[headers[i].name] !== undefined) {
+            protectedHeaders[headers[i].name] = headers[i].value || headers[i].rawValue;
             continue;
         }
         request.setRequestHeader(headers[i].name, headers[i].value || headers[i].binaryValue);
