@@ -1,110 +1,82 @@
-var requestQueue = {};
-var protectedHeaders = {
-    'Origin': true,
-    'User-Agent': true,
-    'Referer': true,
-    'Accept-Encoding': true,
-    'Cookie': true
+const protectedHeaders = ['Origin', 'X-MSGR-Region', 'User-Agent', 'Content-Type', 'Accept', 'Referer', 'Accept-Encoding', 'Accept-Language', 'Cookie'];
+const ekernalHeader = {
+    name: 'ekernal-proxied',
+    value: 'true',
 }
+var blockedRequests = {};
 
+// For flagging the requests that should be modified, and storing their request body (which can't be accessed through the onBeforeSendHeaders listener)
 chrome.webRequest.onBeforeRequest.addListener(
     function(request) {
-        if(request.method == 'POST') {
+        if (request.method == 'POST') {
             var requestBody = decodeBody(request.requestBody.raw[0].bytes);
             if (requestBody) {
-                requestQueue[request.requestId] = requestBody;
+                blockedRequests[request.requestId] = requestBody;
             }
         }
         return {cancel: false};
     },
-    {urls: ['https://www.messenger.com/messaging/send/*'] },
+    {urls: ['https://www.messenger.com/messaging/send/*']},
     ['blocking', 'requestBody']
 );
 
+// For dropping the original flagged request and creating a modified request to take its place
 chrome.webRequest.onBeforeSendHeaders.addListener(
     function(request) {
-        var ekernalHeader = {
-            name: 'ekernal-proxied',
-            value:  'true',
-        }
-
-        for (var i = 0; i < request.requestHeaders.length; i++) {
-            if (request.requestHeaders[i].name === 'X-DevTools-Emulate-Network-Conditions-Client-Id') {
+        for (var i = 0; i < request.requestHeaders.length; i++) { // check for modified request and don't block it
+            if (request.requestHeaders[i].name === ekernalHeader.name) { // this is the modified request, strip the ekernalHeader to make it seem normal
                 request.requestHeaders.splice(i, 1);
-                continue;
-            }
-
-            if (request.requestHeaders[i].name === ekernalHeader.name) {
-                request.requestHeaders.splice(i, 1);
-                console.log(request.requestHeaders[i].name);
-                console.log(ekernalHeader);
-                console.log('PROXIED', JSON.stringify(request.requestHeaders));
-
-                request.requestHeaders.forEach((header) => {
-                    if (protectedHeaders[header.name] !== undefined) {
-                        header.value = protectedHeaders[header.name];
-                    }
-                });
-
-                request.requestHeaders.push({
-                    name: 'Referer',
-                    value: protectedHeaders['Referer']
-                });
-
-                console.log('PROXYFIXED', JSON.stringify(request.requestHeaders));
-
                 return {cancel: false};
             }
         }
 
-        if (requestQueue[request.requestId] === undefined) {
+        if (blockedRequests[request.requestId] === undefined) { // don't block requests that we haven't flagged as requiring kerning
             return {cancel: false};
         }
 
-        console.log('UNPROXIED', JSON.stringify(request.requestHeaders));
-
-        var requestBody = replaceParameterValue(requestQueue[request.requestId], 'body', function(full, key, value){
+        var requestBody = replaceParameterValue(blockedRequests[request.requestId], 'body', function(full, key, value){ // create modified request body
             if (value) {
-                return key + properKerning(value);
+                return key + encodeURIComponent(properKerning(decodeURIComponent(value)));
             }
             return full;
         });
 
-        makeRequest('POST', request.url, request.requestHeaders.concat(ekernalHeader), encodeBody(requestBody));
+        var newRequest = {
+            'type': 'POST',
+            'path': request.url,
+            'headers': request.requestHeaders.concat(ekernalHeader),
+            'body': `(${encodeBody.toString()})(${JSON.stringify(requestBody)})`
+        };
+
+        injectRequest(newRequest); // inject modified request and drop original request
         return {cancel: true};
     },
-    {urls: ['https://www.messenger.com/messaging/send/*'] },
+    {urls: ['https://www.messenger.com/messaging/send/*']},
     ['blocking', 'requestHeaders']
 );
 
-function replaceParameterValue(queryString, parameter, replaceFunc) {
-  return queryString.replace(RegExp('([?&]' + parameter + '=)([^&]*)'), replaceFunc);
+// Injects the request into the messenger tab to get around not being able to set the protected headers (even through the onBeforeSendHeaders listener, some don't get changed)
+function injectRequest(requestData) {
+    chrome.tabs.executeScript({
+        code: (`
+            var protectedHeaders = ${JSON.stringify(protectedHeaders)};
+            (${makeRequest.toString()})(${JSON.stringify(requestData)});
+        `)
+    });
 }
 
-function decodeBody(buf) {
-  return String.fromCharCode.apply(null, new Uint8Array(buf));
-}
-
-function encodeBody(str) {
-  var buf = new ArrayBuffer(str.length*2); // 2 bytes for each char
-  var bufView = new Uint8Array(buf);
-  for (var i=0, strLen=str.length; i<strLen; i++) {
-    bufView[i] = str.charCodeAt(i);
-  }
-  return buf;
-}
-
-function makeRequest(type, path, headers, body) {
+// Gets stringified and sent over to the page as an injected script to be evaluated
+function makeRequest(requestData) {
+    var self = this;
     var request = new XMLHttpRequest();
-    request.open(type, path, true);
+    request.open(requestData.type, requestData.path, true);
 
-    for (var i = 0; i < headers.length; i++) {
-        if (protectedHeaders[headers[i].name] !== undefined) {
-            protectedHeaders[headers[i].name] = headers[i].value || headers[i].rawValue;
+    for (var i = 0; i < requestData.headers.length; i++) {
+        if (protectedHeaders.includes(requestData.headers[i].name)) {
             continue;
         }
-        request.setRequestHeader(headers[i].name, headers[i].value || headers[i].binaryValue);
+        request.setRequestHeader(requestData.headers[i].name, requestData.headers[i].value || requestData.headers[i].binaryValue);
     }
 
-    request.send(body);
+    request.send(eval(requestData.body)); // I feel like it's a valid use of eval, considering everything has to be stringified to be injected
 }
