@@ -1,5 +1,3 @@
-var messageSelector = '#u_0_0 > div > div > div._1q5- > div._20bp > div._4_j4 > div._mh6 > div > div._4rv3 > div > div > div > div._5rp7._5rp8 > div > div > div > div > div > span > span';
-
 var spaceTypes = {
     'default': String.fromCharCode(32),
     'noWidth': String.fromCharCode(6158),
@@ -10,37 +8,64 @@ var spaceTypes = {
 var kernStyles = {
     'default': [{
         'spaceType': 'hair',
-        'probability': 3 / 10,
+        'probability': 8 / 10,
         'multiple': 1,
     }, {
         'spaceType': 'punctuation',
-        'probability': 3 / 10,
-        'multiple': 1,
-    }, {
-        'spaceType': 'default',
         'probability': 2 / 10,
         'multiple': 1,
     }, {
         'spaceType': 'default',
         'probability': 1 / 10,
-        'multiple': 2,
+        'multiple': 1,
     }, ],
-    'mobileHate': [{
+
+    'halfKerned': [{
         'spaceType': 'hair',
         'probability': 4 / 10,
         'multiple': 1,
     }, {
+        'spaceType': 'punctuation',
+        'probability': 1 / 10,
+        'multiple': 1,
+    }, {
+        'spaceType': 'default',
+        'probability': 1 / 20,
+        'multiple': 1,
+    }, ],
+
+    'a e s t h e t i c': [{
+        'spaceType': 'default',
+        'probability': 1,
+        'multiple': 1,
+    }, ],
+
+    'hair a e s t h e t i c': [{
+        'spaceType': 'hair',
+        'probability': 1,
+        'multiple': 1,
+    }, ],
+
+    'extraVariance': [{
+        'spaceType': 'hair',
+        'probability': 5 / 10,
+        'multiple': 1,
+    }, {
         'spaceType': 'hair',
         'probability': 3 / 10,
-        'multiple': 2,
+        'multiple': 1,
     }, {
         'spaceType': 'hair',
+        'probability': 3 / 10,
+        'multiple': 1,
+    }, {
+        'spaceType': 'punctuation',
         'probability': 2 / 10,
-        'multiple': 4,
+        'multiple': 1,
     }, {
-        'spaceType': 'hair',
-        'probability': 1 / 15,
-        'multiple': 6,
+        'spaceType': 'default',
+        'probability': 1 / 10,
+        'multiple': 1,
     }, ],
 }
 
